@@ -5,8 +5,9 @@
 
 // 18:00. Переписываю правильно код и уже в конце меняю просто std::vector<double> на double* и всё.
 
-bool solution(int n, int m, std::vector<double>* matrix, std::vector<double>* b,
-    std::vector<double>* x, std::vector<int>* block_rows, std::vector<double>* block1, std::vector<double>* block2) {
+bool solution(int n, int m, std::vector<double>* matrix, std::vector<double>* b, std::vector<double>* x,
+std::vector<int>* block_rows, std::vector<double>* block1, std::vector<double>* block2,
+[[maybe_unused]] std::vector<double>* block3) {
     
     int k = n / m;
     int l = n % m;
@@ -21,7 +22,7 @@ bool solution(int n, int m, std::vector<double>* matrix, std::vector<double>* b,
         double max_norm_block = -1;
         int row_max_block = -1;
         for (int j = i; j < k; ++j) {
-            get_block((*block_rows)[j], i, n, m, k, l, *matrix, block1); // block = block1
+            get_block((*block_rows)[j], i, n, m, k, l, *matrix, block1);
             double block_norm = matrix_norm(m, m, *block1);
             if (block_norm > max_norm_block && is_inv(m, block1, a_norm)) {
                 max_norm_block = block_norm;
@@ -61,8 +62,8 @@ bool solution(int n, int m, std::vector<double>* matrix, std::vector<double>* b,
         }
 
         // также не забываем слева умножить нужную часть вектора b слева на inv_max_block.
-        auto vec_block = get_vector((*block_rows)[i], m, k, l, *b);
-        auto b_i = matrix_product(m, m, 1, inv_max_block, vec_block, inv_rows);
+        get_vector((*block_rows)[i], m, k, l, *b, block1); 
+        auto b_i = matrix_product(m, m, 1, inv_max_block, *block1, inv_rows);
         put_vector((*block_rows)[i], m, k, l, b_i, b);
 
         for (int q = i + 1; q < h; ++q) {
@@ -82,20 +83,20 @@ bool solution(int n, int m, std::vector<double>* matrix, std::vector<double>* b,
             }
 
             // Аналогичные формулы нужно выполнить для вектора b:
-            auto vec = get_vector((*block_rows)[i], m, k, l, *b);
+            get_vector((*block_rows)[i], m, k, l, *b, block2);
             std::vector<double> v_i(multiplier_rows);
-            matr_prod(multiplier_rows, m, 1, *block1, vec, &v_i);
-            auto mutable_vec = get_vector((*block_rows)[q], m, k, l, *b);
-            subtract_matrix_inplace(1, multiplier_rows, &mutable_vec, v_i);
-            put_vector((*block_rows)[q], m, k, l, mutable_vec, b);
+            matr_prod(multiplier_rows, m, 1, *block1, *block2, &v_i);
+            get_vector((*block_rows)[q], m, k, l, *b, block1);
+            subtract_matrix_inplace(1, multiplier_rows, block1, v_i);
+            put_vector((*block_rows)[q], m, k, l, *block1, b);
         }
     }
 
     // Осталось написать обратный ход метода Гаусса и всё.
     // костыль для самого маленького блока l x l. я про него забыл, поэтому не хочу весь код выше менять.
     if (l) {
-        get_block((*block_rows)[k], k, n, m, k, l, *matrix, block1); // last_block = block1
-        auto last_v = get_vector((*block_rows)[k], m, k, l, *b);
+        get_block((*block_rows)[k], k, n, m, k, l, *matrix, block1); 
+        get_vector((*block_rows)[k], m, k, l, *b, block2); 
 
         // инициализация единичной матрицы.
         std::vector<double> inv_block(l * l);
@@ -109,7 +110,7 @@ bool solution(int n, int m, std::vector<double>* matrix, std::vector<double>* b,
         }
 
         auto inv_rows = inverse_matrix(l, block1, &inv_block); 
-        auto result = matrix_product(l, l, 1, inv_block, last_v, inv_rows);
+        auto result = matrix_product(l, l, 1, inv_block, *block2, inv_rows);
         put_vector((*block_rows)[k], m, k, l, result, x);
     }
 
@@ -120,20 +121,20 @@ bool solution(int n, int m, std::vector<double>* matrix, std::vector<double>* b,
             get_block((*block_rows)[i], j, n, m, k, l, *matrix, block1); 
             int cols = j < k ? m : l;
             std::vector<double> prod(m);
-            auto x_parts = get_vector((*block_rows)[j], m, k, l, *x);
-            matr_prod(m, cols, 1, *block1, x_parts, &prod);
+            get_vector((*block_rows)[j], m, k, l, *x, block2); 
+            matr_prod(m, cols, 1, *block1, *block2, &prod);
 
             for (int p = 0; p < m; ++p) {
                 res[p] += prod[p];
             }
         }
 
-        auto b_i = get_vector((*block_rows)[i], m, k, l, *b);
+        get_vector((*block_rows)[i], m, k, l, *b, block1); 
         for (int p = 0; p < m; ++p) {
-            b_i[p] -= res[p]; 
+            (*block1)[p] -= res[p]; 
         }
 
-        put_vector(i, m, k, l, b_i, x);
+        put_vector(i, m, k, l, *block1, x);
     }     
 
     return true;
@@ -299,10 +300,10 @@ void subtract_vector(int n, const std::vector<double>& a,
     }
 }
 
-double vector_norm(const std::vector<double>& vec) {
+double vector_norm(int n, const std::vector<double>& vec) {
     double norm = 0;
-    for (auto v : vec) {
-        norm += std::fabs(v);        
+    for (int i = 0; i < n; ++i) {
+        norm += std::fabs(vec[i]);        
     }
 
     return norm;
@@ -336,9 +337,11 @@ void put_block(int i, int j, int n, int m, int k, int l, const std::vector<doubl
     }
 }
 
-std::vector<double> get_vector(int i, int m, int k, int l, const std::vector<double>& b) {
+void get_vector(int i, int m, int k, int l, const std::vector<double>& b, std::vector<double>* block3) {
     int length = i < k ? m : l;
-    return {b.begin() + m*i, b.begin() + m*i + length}; 
+    for (int p = 0; p < length; ++p) {
+        (*block3)[p] = b[m*i + p]; 
+    }
 }
 
 void put_vector(int i, int m, int k, int l, const std::vector<double>& b_i, std::vector<double>* b) {
