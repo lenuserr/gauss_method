@@ -5,7 +5,8 @@ void input_matrix(int s, int n, std::vector<double>* matrix);
 void input_b(int n, const std::vector<double>& matrix, std::vector<double>* b);
 bool read_file(const std::string& name_file, int n, std::vector<double>* matrix);
 void output(int n, int r, int l, const std::vector<double>& vec);
-bool solution(int n, int m, std::vector<double>* matrix, std::vector<double>* b, std::vector<double>* x);
+bool solution(int n, int m, std::vector<double>* matrix, std::vector<double>* b,
+    std::vector<double>* x, std::vector<int>* block_rows);
 double matrix_norm(int n, int m, const std::vector<double>& matrix);
 void matr_prod(int n, int m, int k, const std::vector<double>& a, 
     const std::vector<double>& b, std::vector<double>* c);

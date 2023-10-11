@@ -34,11 +34,13 @@ int main(int argc, char* argv[]) {
     auto copy_b = b;
 
     std::vector<double> x(n);
-    std::vector<double> block(m*m);
-    std::vector<double> block2(m*m);
+    int k = n / m;
+    int l = n % m;
+    int h = l ? k + 1 : k; // h блочных строк у меня.
+    std::vector<int> block_rows(h);
 
     auto start = high_resolution_clock::now();
-    bool ok = solution(n, m, &matrix, &b, &x);
+    bool ok = solution(n, m, &matrix, &b, &x, &block_rows);
     auto stop = high_resolution_clock::now();
     duration<double> diff = stop - start;
     double t1 = diff.count();
