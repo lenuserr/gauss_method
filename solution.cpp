@@ -1,5 +1,6 @@
 #include <vector>
 #include <cmath>
+#include <iostream>
 #include "inc.h"
 #define EPS 1e-14
 
@@ -36,7 +37,7 @@ std::vector<int>* block_rows, std::vector<double>* block1, std::vector<double>* 
         get_block((*block_rows)[i], i, n, m, k, l, *matrix, block1); 
 
         auto inv_rows = inverse_matrix(m, block1, block2); 
-        
+
         // умножаем блочную строку слева на обратную матрицу.
         for (int s = i + 1; s < k; ++s) { 
             get_block((*block_rows)[i], s, n, m, k, l, *matrix, block1); 
@@ -104,9 +105,10 @@ std::vector<int>* block_rows, std::vector<double>* block1, std::vector<double>* 
         std::vector<double> res(m);
         for (int j = i + 1; j < h; ++j) {
             get_block((*block_rows)[i], j, n, m, k, l, *matrix, block1); 
+            output(m, m, m, *block1);
             int cols = j < k ? m : l;
             std::vector<double> prod(m);
-            get_vector((*block_rows)[j], m, k, l, *x, block2); 
+            get_vector(j, m, k, l, *x, block2);  
             matr_prod(m, cols, 1, *block1, *block2, &prod);
 
             for (int p = 0; p < m; ++p) {
