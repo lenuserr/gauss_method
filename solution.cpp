@@ -3,8 +3,10 @@
 #include "inc.h"
 #define EPS 1e-14
 
+// переписываем логику, чтобы память не выделялась внутри функции solution.
+
 bool solution(int n, int m, std::vector<double>* matrix, std::vector<double>* b,
-    std::vector<double>* x) {
+    std::vector<double>* x, std::vector<double>* block, std::vector<double>* block2) {
 
     int k = n / m;
     int l = n % m;
@@ -21,9 +23,9 @@ bool solution(int n, int m, std::vector<double>* matrix, std::vector<double>* b,
         double max_norm_block = -1;
         int row_max_block = -1;
         for (int j = i; j < k; ++j) {
-            auto block = get_block(block_rows[j], i, n, m, k, l, *matrix);
-            double block_norm = matrix_norm(m, m, block);
-            if (block_norm > max_norm_block && is_inv(m, &block, a_norm)) {
+            get_block(block_rows[j], i, n, m, k, l, *matrix, block);
+            double block_norm = matrix_norm(m, m, *block);
+            if (block_norm > max_norm_block && is_inv(m, block, a_norm)) {
                 max_norm_block = block_norm;
                 row_max_block = j;
             }
@@ -34,7 +36,7 @@ bool solution(int n, int m, std::vector<double>* matrix, std::vector<double>* b,
         }
 
         std::swap(block_rows[i], block_rows[row_max_block]);
-        max_block = get_block(block_rows[i], i, n, m, k, l, *matrix);
+        get_block(block_rows[i], i, n, m, k, l, *matrix, block);
     
         // не забываем, что к b тоже нужно обращаться через block_rows.
         // ищем обратную матрицу для max_block
@@ -45,18 +47,18 @@ bool solution(int n, int m, std::vector<double>* matrix, std::vector<double>* b,
             inv_max_block[i * m + i] = 1;
         }
         
-        auto inv_rows = inverse_matrix(m, &max_block, &inv_max_block); // правильный порядок строк у inv_max_block.
+        auto inv_rows = inverse_matrix(m, block, &inv_max_block); // правильный порядок строк у inv_max_block.
 
         // умножаем блочную строку слева на обратную матрицу.
         for (int s = i + 1; s < k; ++s) { 
-            auto block = get_block(block_rows[i], s, n, m, k, l, *matrix);
-            auto result = matrix_product(m, m, m, inv_max_block, block, inv_rows);
+            get_block(block_rows[i], s, n, m, k, l, *matrix, block);
+            auto result = matrix_product(m, m, m, inv_max_block, *block, inv_rows);
             put_block(block_rows[i], s, n, m, k, l, result, matrix);
         }
 
         if (l) {
-            auto block = get_block(block_rows[i], k, n, m, k, l, *matrix);
-            auto result = matrix_product(m, m, l, inv_max_block, block, inv_rows);
+            get_block(block_rows[i], k, n, m, k, l, *matrix, block);
+            auto result = matrix_product(m, m, l, inv_max_block, *block, inv_rows);
             put_block(block_rows[i], k, n, m, k, l, result, matrix);
         }
 
@@ -66,25 +68,25 @@ bool solution(int n, int m, std::vector<double>* matrix, std::vector<double>* b,
         put_vector(block_rows[i], m, k, l, b_i, b);
 
         for (int q = i + 1; q < h; ++q) {
-            auto multiplier = get_block(block_rows[q], i, n, m, k, l, *matrix);
+            get_block(block_rows[q], i, n, m, k, l, *matrix, block2); // multiplier
             int multiplier_rows = q < k ? m : l;
             // multiplier shape: [multiplier_rows, m]
             for (int r = i + 1; r < h; ++r) { 
-                auto block = get_block(block_rows[i], r, n, m, k, l, *matrix);
+                get_block(block_rows[i], r, n, m, k, l, *matrix, block); // block
                 int block_cols = r < k ? m : l;
                 // multiplier shape: [multiplier_rows, m]; block shape: [m, block_cols]
 
                 std::vector<double> result(multiplier_rows * block_cols);
-                matr_prod(multiplier_rows, m, block_cols, multiplier, block, &result);
-                auto mutable_block = get_block(block_rows[q], r, n, m, k, l, *matrix); 
-                subtract_matrix_inplace(multiplier_rows, block_cols, &mutable_block, result);
-                put_block(block_rows[q], r, n, m, k, l, mutable_block, matrix);
+                matr_prod(multiplier_rows, m, block_cols, *block2, *block, &result);
+                get_block(block_rows[q], r, n, m, k, l, *matrix, block); 
+                subtract_matrix_inplace(multiplier_rows, block_cols, block, result);
+                put_block(block_rows[q], r, n, m, k, l, *block, matrix);
             }
             
             // Аналогичные формулы нужно выполнить для вектора b:
             auto vec = get_vector(block_rows[i], m, k, l, *b);
             std::vector<double> v_i(multiplier_rows);
-            matr_prod(multiplier_rows, m, 1, multiplier, vec, &v_i);
+            matr_prod(multiplier_rows, m, 1, *block2, vec, &v_i);
             auto mutable_vec = get_vector(block_rows[q], m, k, l, *b);
             subtract_matrix_inplace(1, multiplier_rows, &mutable_vec, v_i);
             put_vector(block_rows[q], m, k, l, mutable_vec, b);
@@ -95,7 +97,7 @@ bool solution(int n, int m, std::vector<double>* matrix, std::vector<double>* b,
     std::vector<std::vector<double>> x_parts(h);
     // костыль для самого маленького блока l x l. я про него забыл, поэтому не хочу весь код выше менять.
     if (l) {
-        auto last_block = get_block(block_rows[k], k, n, m, k, l, *matrix);
+        get_block(block_rows[k], k, n, m, k, l, *matrix, block); // last_block
         auto last_v = get_vector(block_rows[k], m, k, l, *b);
         
         // инициализация единичной матрицы.
@@ -104,12 +106,12 @@ bool solution(int n, int m, std::vector<double>* matrix, std::vector<double>* b,
             inv_block[i * l + i] = 1;
         }
         
-        auto copy_last_block = last_block;
+        auto copy_last_block = *block;
         if (!is_inv(l, &copy_last_block, a_norm)) {
             return false;
         }
 
-        auto inv_rows = inverse_matrix(l, &last_block, &inv_block); 
+        auto inv_rows = inverse_matrix(l, block, &inv_block); 
         auto result = matrix_product(l, l, 1, inv_block, last_v, inv_rows);
         put_vector(block_rows[k], m, k, l, result, x);
         x_parts[k] = result;
@@ -120,10 +122,10 @@ bool solution(int n, int m, std::vector<double>* matrix, std::vector<double>* b,
     for (int i = k - 1; i >= 0; --i) {
         std::vector<double> res(m);
         for (int j = i + 1; j < h; ++j) {
-            auto block = get_block(block_rows[i], j, n, m, k, l, *matrix);
+            get_block(block_rows[i], j, n, m, k, l, *matrix, block);
             int cols = j < k ? m : l;
             std::vector<double> prod(m);
-            matr_prod(m, cols, 1, block, x_parts[j], &prod);
+            matr_prod(m, cols, 1, *block, x_parts[j], &prod);
 
             for (int p = 0; p < m; ++p) {
                 res[p] += prod[p];
@@ -157,39 +159,77 @@ double matrix_norm(int n, int m, const std::vector<double>& matrix) {
     return norm;
 }
 
-std::vector<double> matrix_product(int n, int m, int k, const std::vector<double>& a,
-    const std::vector<double>& b, const std::vector<int>& inv_rows) {
-    // n x m and m x k -> result: n x k
-    std::vector<double> result(n * k);
+std::vector<double> matrix_product(int n, int m, int k, const std::vector<double>& a, const std::vector<double>& b, 
+const std::vector<int>& inv_rows) {
+    int i, j, l;
+    double sum00, sum01, sum02, sum10, sum11, sum12, sum20, sum21, sum22;
 
-    for (int i = 0; i < n; ++i) {
-        for (int j = 0; j < k; ++j) {
-            double sum = 0;
-            for (int p = 0; p < m; ++p) {
-                sum += a[m*inv_rows[i] + p] * b[k*p + j];
+    std::vector<double> res(n * k);
+
+    int v = n % 3;
+    int h = k % 3;
+    for(i = 0; i < n * k; i++)
+          res[i] = 0;
+    for(i = 0; i < v; i++) {
+            for(j = 0; j < h; j++) {
+                    sum00 = 0;
+                    for(l = 0; l < m; l++)
+                            sum00 += a[inv_rows[i]*m+l] * b[l*k+j];
+                    res[i*k+j] += sum00;
             }
-            result[k*i + j] = sum;
-        }
+            for(; j < k; j += 3) {
+                    sum00 = sum01 = sum02 = 0;
+                            for(l = 0; l < m; l++) {
+                                    sum00 += a[inv_rows[i]*m+l] * b[l*k+j];
+                                    sum01 += a[inv_rows[i]*m+l] * b[l*k+j+1];
+                                    sum02 += a[inv_rows[i]*m+l] * b[l*k+j+2];
+                            }
+                    res[i*k+j] += sum00;
+                    res[i*k+j+1] += sum01;
+                    res[i*k+j+2] += sum02;
+            }
+    }
+    for(; i < n; i += 3) {
+            for(j = 0; j < h; j++) {
+                    sum00 = sum10 = sum20 = 0;
+                    for(l = 0; l < m; l++) {
+                            sum00 += a[inv_rows[i]*m+l] * b[l*k+j];
+                            sum10 += a[inv_rows[i + 1]*m+l] * b[l*k+j];
+                            sum20 += a[inv_rows[i + 2]*m+l] * b[l*k+j];
+                    }
+                    res[i*k+j] += sum00;
+                    res[(i+1)*k+j] += sum10;
+                    res[(i+2)*k+j] += sum20;
+            }
+
+            for(; j < k; j += 3) {
+                    sum00 = sum01 = sum02 = sum10 = sum11 = sum12 = sum20 = sum21 = sum22 = 0;
+	for(l = 0; l < m; l++) {
+                            sum00 += a[inv_rows[i]*m+l] * b[l*k+j];
+                            sum01 += a[inv_rows[i]*m+l] * b[l*k+j+1];
+                            sum02 += a[inv_rows[i]*m+l] * b[l*k+j+2];
+                            sum10 += a[inv_rows[i + 1]*m+l] * b[l*k+j];
+                            sum11 += a[inv_rows[i + 1]*m+l] * b[l*k+j+1];
+                            sum12 += a[inv_rows[i + 1]*m+l] * b[l*k+j+2];
+                            sum20 += a[inv_rows[i + 2]*m+l] * b[l*k+j];
+                            sum21 += a[inv_rows[i + 2]*m+l] * b[l*k+j+1];
+                            sum22 += a[inv_rows[i + 2]*m+l] * b[l*k+j+2];
+                    }
+                    res[i*k+j] += sum00;
+                    res[i*k+j+1] += sum01;
+                    res[i*k+j+2] += sum02;
+                    res[(i+1)*k+j] += sum10;
+                    res[(i+1)*k+j+1] += sum11;
+                    res[(i+1)*k+j+2] += sum12;
+                    res[(i+2)*k+j] += sum20;
+                    res[(i+2)*k+j+1] += sum21;
+                    res[(i+2)*k+j+2] += sum22;
+            }
     }
     
-    return result;
+    return res;
 }
-/*
-void matr_prod(int n, int m, int k, const std::vector<double>& a, 
-    const std::vector<double>& b, std::vector<double>* c) {
-    // n x m and m x k -> result: n x k
 
-    for (int i = 0; i < n; ++i) {
-        for (int j = 0; j < k; ++j) {
-            double sum = 0;
-            for (int p = 0; p < m; ++p) {
-                sum += a[m*i + p] * b[k*p + j];
-            }
-            (*c)[k*i + j] = sum;
-        }
-    }
-}
-*/
 void matr_prod(int n, int m, int k, const std::vector<double>& a, const std::vector<double>& b, std::vector<double>* res) {
         int i, j, l;
         double sum00, sum01, sum02, sum10, sum11, sum12, sum20, sum21, sum22;
@@ -273,22 +313,19 @@ double vector_norm(const std::vector<double>& vec) {
     return norm;
 }
 
-std::vector<double> get_block(int i, int j, int n, int m, int k, int l,
- const std::vector<double>& matrix) {
+void get_block(int i, int j, int n, int m, int k, int l,
+ const std::vector<double>& matrix, std::vector<double>* block) {
     int h = i < k ? m : l;
     int w = j < k ? m : l;
-    
-    std::vector<double> block(h * w);
+
     int ind = 0;
     
     for (int p = 0; p < h; ++p) {
         for (int q = 0; q < w; ++q) {
-            block[ind] = matrix[n * (m * i + p) + m * j + q];
+            (*block)[ind] = matrix[n * (m * i + p) + m * j + q];
             ind++;
         }
     }
-    
-    return block;
 }
 
 void put_block(int i, int j, int n, int m, int k, int l, const std::vector<double>& block, std::vector<double>* matrix) {
@@ -386,12 +423,6 @@ std::vector<int> inverse_matrix(int m, std::vector<double>* matrix, std::vector<
 
 bool is_inv(int m, std::vector<double>* matrix, double a_norm) {
     std::vector<int> rows(m);
-
-    std::vector<int> identity(m * m);
-    for (int i = 0; i < m; ++i) {
-        identity[m*i + i] = 1;
-    }
-
     for (int k = 0; k < m; ++k) {
         rows[k] = k;
     }
@@ -415,24 +446,14 @@ bool is_inv(int m, std::vector<double>* matrix, double a_norm) {
 
         // делим нашу строку на max_elem.
         double factor = 1 / max_elem;
-        for (int s = 0; s < i; ++s) {
-            identity[rows[i] * m + s] *= factor;
-        }
-        
         for (int s = i; s < m; ++s) {
             (*matrix)[rows[i] * m + s] *= factor;
-            identity[rows[i] * m + s] *= factor;
         }
         
         for (int k = i + 1; k < m; ++k) {
             double multiplier = -(*matrix)[rows[k] * m + i];
-            for (int p = 0; p < i + 1; ++p) {
-                identity[rows[k] * m + p] += identity[rows[i] * m + p] * multiplier;
-            }
-            
             for (int p = i + 1; p < m; ++p) { 
                 (*matrix)[rows[k] * m + p] += (*matrix)[rows[i] * m + p] * multiplier;
-                identity[rows[k] * m + p] += identity[rows[i] * m + p] * multiplier;
             }
         }
     }
