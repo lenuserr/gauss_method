@@ -1,6 +1,5 @@
 #include <vector>
 #include <cmath>
-#include <iostream>
 #include "inc.h"
 #define EPS 1e-14
 
@@ -23,7 +22,7 @@ std::vector<int>* block_rows, std::vector<double>* block1, std::vector<double>* 
         for (int j = i; j < k; ++j) {
             get_block((*block_rows)[j], i, n, m, k, l, *matrix, block1);
             double block_norm = matrix_norm(m, m, *block1);
-            if (block_norm > max_norm_block && is_inv(m, block1, a_norm)) {
+            if (block_norm - EPS * a_norm > max_norm_block && is_inv(m, block1, a_norm)) {
                 max_norm_block = block_norm;
                 row_max_block = j;
             }
@@ -97,7 +96,7 @@ std::vector<int>* block_rows, std::vector<double>* block1, std::vector<double>* 
         auto inv_rows = inverse_matrix(l, block1, block2);  
         get_vector((*block_rows)[k], m, k, l, *b, block1);
         auto result = matrix_product(l, l, 1, *block2, *block1, inv_rows);
-        put_vector((*block_rows)[k], m, k, l, result, x);
+        put_vector(k, m, k, l, result, x);
     }
 
     // Обратный ход метода Гаусса.
