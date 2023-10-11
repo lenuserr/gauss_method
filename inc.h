@@ -5,8 +5,9 @@ void input_matrix(int s, int n, std::vector<double>* matrix);
 void input_b(int n, const std::vector<double>& matrix, std::vector<double>* b);
 bool read_file(const std::string& name_file, int n, std::vector<double>* matrix);
 void output(int n, int r, int l, const std::vector<double>& vec);
-bool solution(int n, int m, std::vector<double>* matrix, std::vector<double>* b,
-    std::vector<double>* x, std::vector<int>* block_rows, std::vector<double>* block1, std::vector<double>* block2, std::vector<int>* rows);
+bool solution(int n, int m, std::vector<double>* matrix, std::vector<double>* b, std::vector<double>* x,
+ std::vector<int>* block_rows, std::vector<int>* rows, 
+ std::vector<double>* block1, std::vector<double>* block2, std::vector<double>* block3);
 double matrix_norm(int n, int m, const std::vector<double>& matrix);
 void matr_prod(int n, int m, int k, const std::vector<double>& a, 
     const std::vector<double>& b, std::vector<double>* c);
@@ -22,6 +23,6 @@ void inverse_matrix(int m, std::vector<double>* matrix, std::vector<double>* ide
 void subtract_matrix_inplace(int n, int m, std::vector<double>* a, const std::vector<double>& b);
 void get_vector(int i, int m, int k, int l, const std::vector<double>& b, std::vector<double>* block3);
 void put_vector(int i, int m, int k, int l, const std::vector<double>& b_i, std::vector<double>* b);
-std::vector<double> matrix_product(int n, int m, int k, const std::vector<double>& a,
-    const std::vector<double>& b, const std::vector<int>& inv_rows);
+void matrix_product(int n, int m, int k, const std::vector<double>& a, const std::vector<double>& b, 
+std::vector<double>* res, const std::vector<int>& inv_rows);
     

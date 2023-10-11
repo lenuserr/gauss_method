@@ -4,9 +4,11 @@
 #define EPS 1e-14
 
 // 18:00. Переписываю правильно код и уже в конце меняю просто std::vector<double> на double* и всё.
+// 22:00. Продолжаю заниматься этим же. Был перерыв на баги + на еду.
 
 bool solution(int n, int m, std::vector<double>* matrix, std::vector<double>* b, std::vector<double>* x,
-std::vector<int>* block_rows, std::vector<double>* block1, std::vector<double>* block2, std::vector<int>* rows) {
+ std::vector<int>* block_rows, std::vector<int>* rows, 
+ std::vector<double>* block1, std::vector<double>* block2, std::vector<double>* block3) {
     
     int k = n / m;
     int l = n % m;
@@ -37,23 +39,25 @@ std::vector<int>* block_rows, std::vector<double>* block1, std::vector<double>* 
 
         inverse_matrix(m, block1, block2, rows); 
 
+        // block2 занят под обратную матрицу.
+
         // умножаем блочную строку слева на обратную матрицу.
         for (int s = i + 1; s < k; ++s) { 
             get_block((*block_rows)[i], s, n, m, k, l, *matrix, block1); 
-            auto result = matrix_product(m, m, m, *block2, *block1, *rows);
-            put_block((*block_rows)[i], s, n, m, k, l, result, matrix);
+            matrix_product(m, m, m, *block2, *block1, block3, *rows); 
+            put_block((*block_rows)[i], s, n, m, k, l, *block3, matrix);
         }
 
         if (l) {
             get_block((*block_rows)[i], k, n, m, k, l, *matrix, block1); 
-            auto result = matrix_product(m, m, l, *block2, *block1, *rows);
-            put_block((*block_rows)[i], k, n, m, k, l, result, matrix);
+            matrix_product(m, m, l, *block2, *block1, block3, *rows);
+            put_block((*block_rows)[i], k, n, m, k, l, *block3, matrix);
         }
 
         // также не забываем слева умножить нужную часть вектора b слева на inv_max_block.
         get_vector((*block_rows)[i], m, k, l, *b, block1); 
-        auto b_i = matrix_product(m, m, 1, *block2, *block1, *rows);
-        put_vector((*block_rows)[i], m, k, l, b_i, b);
+        matrix_product(m, m, 1, *block2, *block1, block3, *rows); 
+        put_vector((*block_rows)[i], m, k, l, *block3, b);
 
         for (int q = i + 1; q < h; ++q) {
             get_block((*block_rows)[q], i, n, m, k, l, *matrix, block1); // multiplier = block1
@@ -95,8 +99,8 @@ std::vector<int>* block_rows, std::vector<double>* block1, std::vector<double>* 
 
         inverse_matrix(l, block1, block2, rows); 
         get_vector((*block_rows)[k], m, k, l, *b, block1);
-        auto result = matrix_product(l, l, 1, *block2, *block1, *rows);
-        put_vector(k, m, k, l, result, x);
+        matrix_product(l, l, 1, *block2, *block1, block3, *rows);
+        put_vector(k, m, k, l, *block3, x);
     }
 
     // Обратный ход метода Гаусса.
@@ -141,23 +145,21 @@ double matrix_norm(int n, int m, const std::vector<double>& matrix) {
     return norm;
 }
 
-std::vector<double> matrix_product(int n, int m, int k, const std::vector<double>& a, const std::vector<double>& b, 
-const std::vector<int>& inv_rows) {
+void matrix_product(int n, int m, int k, const std::vector<double>& a, const std::vector<double>& b, 
+std::vector<double>* res, const std::vector<int>& inv_rows) {
     int i, j, l;
     double sum00, sum01, sum02, sum10, sum11, sum12, sum20, sum21, sum22;
-
-    std::vector<double> res(n * k);
 
     int v = n % 3;
     int h = k % 3;
     for(i = 0; i < n * k; i++)
-          res[i] = 0;
+          (*res)[i] = 0;
     for(i = 0; i < v; i++) {
             for(j = 0; j < h; j++) {
                     sum00 = 0;
                     for(l = 0; l < m; l++)
                             sum00 += a[inv_rows[i]*m+l] * b[l*k+j];
-                    res[i*k+j] += sum00;
+                    (*res)[i*k+j] += sum00;
             }
             for(; j < k; j += 3) {
                     sum00 = sum01 = sum02 = 0;
@@ -166,9 +168,9 @@ const std::vector<int>& inv_rows) {
                                     sum01 += a[inv_rows[i]*m+l] * b[l*k+j+1];
                                     sum02 += a[inv_rows[i]*m+l] * b[l*k+j+2];
                             }
-                    res[i*k+j] += sum00;
-                    res[i*k+j+1] += sum01;
-                    res[i*k+j+2] += sum02;
+                    (*res)[i*k+j] += sum00;
+                    (*res)[i*k+j+1] += sum01;
+                    (*res)[i*k+j+2] += sum02;
             }
     }
     for(; i < n; i += 3) {
@@ -179,9 +181,9 @@ const std::vector<int>& inv_rows) {
                             sum10 += a[inv_rows[i + 1]*m+l] * b[l*k+j];
                             sum20 += a[inv_rows[i + 2]*m+l] * b[l*k+j];
                     }
-                    res[i*k+j] += sum00;
-                    res[(i+1)*k+j] += sum10;
-                    res[(i+2)*k+j] += sum20;
+                    (*res)[i*k+j] += sum00;
+                    (*res)[(i+1)*k+j] += sum10;
+                    (*res)[(i+2)*k+j] += sum20;
             }
 
             for(; j < k; j += 3) {
@@ -197,19 +199,17 @@ const std::vector<int>& inv_rows) {
                             sum21 += a[inv_rows[i + 2]*m+l] * b[l*k+j+1];
                             sum22 += a[inv_rows[i + 2]*m+l] * b[l*k+j+2];
                     }
-                    res[i*k+j] += sum00;
-                    res[i*k+j+1] += sum01;
-                    res[i*k+j+2] += sum02;
-                    res[(i+1)*k+j] += sum10;
-                    res[(i+1)*k+j+1] += sum11;
-                    res[(i+1)*k+j+2] += sum12;
-                    res[(i+2)*k+j] += sum20;
-                    res[(i+2)*k+j+1] += sum21;
-                    res[(i+2)*k+j+2] += sum22; 
+                    (*res)[i*k+j] += sum00;
+                    (*res)[i*k+j+1] += sum01;
+                    (*res)[i*k+j+2] += sum02;
+                    (*res)[(i+1)*k+j] += sum10;
+                    (*res)[(i+1)*k+j+1] += sum11;
+                    (*res)[(i+1)*k+j+2] += sum12;
+                    (*res)[(i+2)*k+j] += sum20;
+                    (*res)[(i+2)*k+j+1] += sum21;
+                    (*res)[(i+2)*k+j+2] += sum22; 
             }
     }
-    
-    return res;
 }
 
 void matr_prod(int n, int m, int k, const std::vector<double>& a, const std::vector<double>& b, std::vector<double>* res) {
