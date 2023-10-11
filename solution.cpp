@@ -6,8 +6,7 @@
 // 18:00. Переписываю правильно код и уже в конце меняю просто std::vector<double> на double* и всё.
 
 bool solution(int n, int m, std::vector<double>* matrix, std::vector<double>* b, std::vector<double>* x,
-std::vector<int>* block_rows, std::vector<double>* block1, std::vector<double>* block2,
-[[maybe_unused]] std::vector<double>* block3) {
+std::vector<int>* block_rows, std::vector<double>* block1, std::vector<double>* block2) {
     
     int k = n / m;
     int l = n % m;
@@ -36,33 +35,24 @@ std::vector<int>* block_rows, std::vector<double>* block1, std::vector<double>* 
         std::swap((*block_rows)[i], (*block_rows)[row_max_block]);
         get_block((*block_rows)[i], i, n, m, k, l, *matrix, block1); 
 
-        // не забываем, что к b тоже нужно обращаться через block_rows.
-        // ищем обратную матрицу для max_block
-
-        // инициализация единичной матрицы.
-        std::vector<double> inv_max_block(m * m);
-        for (int i = 0; i < m; ++i) {
-            inv_max_block[i * m + i] = 1;
-        }
-
-        auto inv_rows = inverse_matrix(m, block1, &inv_max_block); // правильный порядок строк у inv_max_block.
+        auto inv_rows = inverse_matrix(m, block1, block2); 
         
         // умножаем блочную строку слева на обратную матрицу.
         for (int s = i + 1; s < k; ++s) { 
             get_block((*block_rows)[i], s, n, m, k, l, *matrix, block1); 
-            auto result = matrix_product(m, m, m, inv_max_block, *block1, inv_rows);
+            auto result = matrix_product(m, m, m, *block2, *block1, inv_rows);
             put_block((*block_rows)[i], s, n, m, k, l, result, matrix);
         }
 
         if (l) {
             get_block((*block_rows)[i], k, n, m, k, l, *matrix, block1); 
-            auto result = matrix_product(m, m, l, inv_max_block, *block1, inv_rows);
+            auto result = matrix_product(m, m, l, *block2, *block1, inv_rows);
             put_block((*block_rows)[i], k, n, m, k, l, result, matrix);
         }
 
         // также не забываем слева умножить нужную часть вектора b слева на inv_max_block.
         get_vector((*block_rows)[i], m, k, l, *b, block1); 
-        auto b_i = matrix_product(m, m, 1, inv_max_block, *block1, inv_rows);
+        auto b_i = matrix_product(m, m, 1, *block2, *block1, inv_rows);
         put_vector((*block_rows)[i], m, k, l, b_i, b);
 
         for (int q = i + 1; q < h; ++q) {
@@ -94,22 +84,18 @@ std::vector<int>* block_rows, std::vector<double>* block1, std::vector<double>* 
     // Осталось написать обратный ход метода Гаусса и всё.
     // костыль для самого маленького блока l x l. я про него забыл, поэтому не хочу весь код выше менять.
     if (l) {
-        get_block((*block_rows)[k], k, n, m, k, l, *matrix, block1); 
-        get_vector((*block_rows)[k], m, k, l, *b, block2); 
-
-        // инициализация единичной матрицы.
-        std::vector<double> inv_block(l * l);
-        for (int i = 0; i < l; ++i) {
-            inv_block[i * l + i] = 1;
-        }
+        get_block((*block_rows)[k], k, n, m, k, l, *matrix, block1);  
 
         auto copy_last_block = *block1;
         if (!is_inv(l, &copy_last_block, a_norm)) {
             return false;
         }
+        // потом вот этот copy last block уберу нахой, этот код не нужен.
+        // МОЖНО УБРАТЬ, ЕСЛИ INVERSE_MATRIX СДЕЛАТЬ BOOL И ТАКУЮ ЛОГИКУ КАК В IS_INV НА RETURN FALSE.
 
-        auto inv_rows = inverse_matrix(l, block1, &inv_block); 
-        auto result = matrix_product(l, l, 1, inv_block, *block2, inv_rows);
+        auto inv_rows = inverse_matrix(l, block1, block2);  
+        get_vector((*block_rows)[k], m, k, l, *b, block1);
+        auto result = matrix_product(l, l, 1, *block2, *block1, inv_rows);
         put_vector((*block_rows)[k], m, k, l, result, x);
     }
 
@@ -361,9 +347,13 @@ void subtract_matrix_inplace(int n, int m, std::vector<double>* a, const std::ve
 }
 
 std::vector<int> inverse_matrix(int m, std::vector<double>* matrix, std::vector<double>* identity) {
-    // НАДО ДЕЛИТЬ НА МАКСИМАЛЬНЫЙ ПО НОРМЕ, А Я ДЕЛЮ НА МАКСИМАЛЬНЫЙ ПО ЗНАЧЕНИЮ.
-    // АККУРАТНО ПОТОМ ПЕРЕПИСАТЬ ЭТУ ЛОГИКУ.
     std::vector<int> rows(m);
+
+    for (int i = 0; i < m; ++i) {
+        for (int j = 0; j < m; ++j) {
+            (*identity)[i * m + j] = (i != j) ? 0 : 1;
+        }
+    }
 
     for (int k = 0; k < m; ++k) {
         rows[k] = k;
@@ -421,11 +411,6 @@ std::vector<int> inverse_matrix(int m, std::vector<double>* matrix, std::vector<
 bool is_inv(int m, std::vector<double>* matrix, double a_norm) {
     std::vector<int> rows(m);
 
-    std::vector<int> identity(m * m);
-    for (int i = 0; i < m; ++i) {
-        identity[m*i + i] = 1;
-    }
-
     for (int k = 0; k < m; ++k) {
         rows[k] = k;
     }
@@ -449,24 +434,15 @@ bool is_inv(int m, std::vector<double>* matrix, double a_norm) {
 
         // делим нашу строку на max_elem.
         double factor = 1 / max_elem;
-        for (int s = 0; s < i; ++s) {
-            identity[rows[i] * m + s] *= factor;
-        }
-
         for (int s = i; s < m; ++s) {
             (*matrix)[rows[i] * m + s] *= factor;
-            identity[rows[i] * m + s] *= factor;
         }
 
         for (int k = i + 1; k < m; ++k) {
             double multiplier = -(*matrix)[rows[k] * m + i];
-            for (int p = 0; p < i + 1; ++p) {
-                identity[rows[k] * m + p] += identity[rows[i] * m + p] * multiplier;
-            }
 
             for (int p = i + 1; p < m; ++p) { 
                 (*matrix)[rows[k] * m + p] += (*matrix)[rows[i] * m + p] * multiplier;
-                identity[rows[k] * m + p] += identity[rows[i] * m + p] * multiplier;
             }
         }
     }

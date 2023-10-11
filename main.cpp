@@ -36,14 +36,13 @@ int main(int argc, char* argv[]) {
     std::vector<double> x(n);
     std::vector<double> block1(m*m);
     std::vector<double> block2(m*m);
-    std::vector<double> block3(m);
     int k = n / m;
     int l = n % m;
     int h = l ? k + 1 : k; // h блочных строк у меня.
     std::vector<int> block_rows(h);
 
     auto start = high_resolution_clock::now();
-    bool ok = solution(n, m, &matrix, &b, &x, &block_rows, &block1, &block2, &block3);
+    bool ok = solution(n, m, &matrix, &b, &x, &block_rows, &block1, &block2);
     auto stop = high_resolution_clock::now();
     duration<double> diff = stop - start;
     double t1 = diff.count();
