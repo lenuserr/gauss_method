@@ -6,7 +6,7 @@
 // 18:00. Переписываю правильно код и уже в конце меняю просто std::vector<double> на double* и всё.
 
 bool solution(int n, int m, std::vector<double>* matrix, std::vector<double>* b, std::vector<double>* x,
-std::vector<int>* block_rows, std::vector<double>* block1, std::vector<double>* block2) {
+std::vector<int>* block_rows, std::vector<double>* block1, std::vector<double>* block2, std::vector<int>* rows) {
     
     int k = n / m;
     int l = n % m;
@@ -35,24 +35,24 @@ std::vector<int>* block_rows, std::vector<double>* block1, std::vector<double>* 
         std::swap((*block_rows)[i], (*block_rows)[row_max_block]);
         get_block((*block_rows)[i], i, n, m, k, l, *matrix, block1); 
 
-        auto inv_rows = inverse_matrix(m, block1, block2); 
+        inverse_matrix(m, block1, block2, rows); 
 
         // умножаем блочную строку слева на обратную матрицу.
         for (int s = i + 1; s < k; ++s) { 
             get_block((*block_rows)[i], s, n, m, k, l, *matrix, block1); 
-            auto result = matrix_product(m, m, m, *block2, *block1, inv_rows);
+            auto result = matrix_product(m, m, m, *block2, *block1, *rows);
             put_block((*block_rows)[i], s, n, m, k, l, result, matrix);
         }
 
         if (l) {
             get_block((*block_rows)[i], k, n, m, k, l, *matrix, block1); 
-            auto result = matrix_product(m, m, l, *block2, *block1, inv_rows);
+            auto result = matrix_product(m, m, l, *block2, *block1, *rows);
             put_block((*block_rows)[i], k, n, m, k, l, result, matrix);
         }
 
         // также не забываем слева умножить нужную часть вектора b слева на inv_max_block.
         get_vector((*block_rows)[i], m, k, l, *b, block1); 
-        auto b_i = matrix_product(m, m, 1, *block2, *block1, inv_rows);
+        auto b_i = matrix_product(m, m, 1, *block2, *block1, *rows);
         put_vector((*block_rows)[i], m, k, l, b_i, b);
 
         for (int q = i + 1; q < h; ++q) {
@@ -93,9 +93,9 @@ std::vector<int>* block_rows, std::vector<double>* block1, std::vector<double>* 
         // потом вот этот copy last block уберу нахой, этот код не нужен.
         // МОЖНО УБРАТЬ, ЕСЛИ INVERSE_MATRIX СДЕЛАТЬ BOOL И ТАКУЮ ЛОГИКУ КАК В IS_INV НА RETURN FALSE.
 
-        auto inv_rows = inverse_matrix(l, block1, block2);  
+        inverse_matrix(l, block1, block2, rows); 
         get_vector((*block_rows)[k], m, k, l, *b, block1);
-        auto result = matrix_product(l, l, 1, *block2, *block1, inv_rows);
+        auto result = matrix_product(l, l, 1, *block2, *block1, *rows);
         put_vector(k, m, k, l, result, x);
     }
 
@@ -347,8 +347,8 @@ void subtract_matrix_inplace(int n, int m, std::vector<double>* a, const std::ve
     }
 }
 
-std::vector<int> inverse_matrix(int m, std::vector<double>* matrix, std::vector<double>* identity) {
-    std::vector<int> rows(m);
+void inverse_matrix(int m, std::vector<double>* matrix, std::vector<double>* identity,
+ std::vector<int>* rows) {
 
     for (int i = 0; i < m; ++i) {
         for (int j = 0; j < m; ++j) {
@@ -357,56 +357,56 @@ std::vector<int> inverse_matrix(int m, std::vector<double>* matrix, std::vector<
     }
 
     for (int k = 0; k < m; ++k) {
-        rows[k] = k;
+        (*rows)[k] = k;
     }
 
     for (int i = 0; i < m; ++i) {
         // выбираем максимальный элемент по столбцу.
-        double max_elem = (*matrix)[rows[i] * m + i];
+        double max_elem = (*matrix)[(*rows)[i] * m + i];
         int row_max_elem = i;
         for (int j = i + 1; j < m; ++j) {
-            if (std::fabs((*matrix)[rows[j] * m + i]) > std::fabs(max_elem)) {
-                max_elem = (*matrix)[rows[j] * m + i];
+            if (std::fabs((*matrix)[(*rows)[j] * m + i]) > std::fabs(max_elem)) {
+                max_elem = (*matrix)[(*rows)[j] * m + i];
                 row_max_elem = j;
             }
         }
 
-        std::swap(rows[i], rows[row_max_elem]);
+        std::swap((*rows)[i], (*rows)[row_max_elem]);
 
         // делим нашу строку на max_elem.
         double factor = 1 / max_elem;
         for (int s = 0; s < i; ++s) {
-            (*identity)[rows[i] * m + s] *= factor;
+            (*identity)[(*rows)[i] * m + s] *= factor;
         }
 
         for (int s = i; s < m; ++s) {
-            (*matrix)[rows[i] * m + s] *= factor;
-            (*identity)[rows[i] * m + s] *= factor;
+            (*matrix)[(*rows)[i] * m + s] *= factor;
+            (*identity)[(*rows)[i] * m + s] *= factor;
         }
 
         for (int k = i + 1; k < m; ++k) {
-            double multiplier = -(*matrix)[rows[k] * m + i];
+            double multiplier = -(*matrix)[(*rows)[k] * m + i];
             for (int p = 0; p < i + 1; ++p) {
-                (*identity)[rows[k] * m + p] += (*identity)[rows[i] * m + p] * multiplier;
+                (*identity)[(*rows)[k] * m + p] += (*identity)[(*rows)[i] * m + p] * multiplier;
             }
 
             for (int p = i + 1; p < m; ++p) { 
-                (*matrix)[rows[k] * m + p] += (*matrix)[rows[i] * m + p] * multiplier;
-                (*identity)[rows[k] * m + p] += (*identity)[rows[i] * m + p] * multiplier;
+                (*matrix)[(*rows)[k] * m + p] += (*matrix)[(*rows)[i] * m + p] * multiplier;
+                (*identity)[(*rows)[k] * m + p] += (*identity)[(*rows)[i] * m + p] * multiplier;
             }
         }
     }
 
     for (int i = m - 1; i > 0; --i) {
         for (int k = i - 1; k >= 0; --k) {
-            double multiplier = -(*matrix)[rows[k] * m + i];
+            double multiplier = -(*matrix)[(*rows)[k] * m + i];
             for (int p = 0; p < m; ++p) { 
-                (*identity)[rows[k] * m + p] += (*identity)[rows[i] * m + p] * multiplier;
+                (*identity)[(*rows)[k] * m + p] += (*identity)[(*rows)[i] * m + p] * multiplier;
             }
         }
     }
 
-    return rows; // возвращаю настоящий порядок строк у обратной матрицы.
+    // rows - настоящий порядок строк у обратной матрицы.
 }
 
 bool is_inv(int m, std::vector<double>* matrix, double a_norm) {
