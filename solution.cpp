@@ -12,7 +12,6 @@ std::vector<int>* block_rows, std::vector<double>* block1, std::vector<double>* 
     int k = n / m;
     int l = n % m;
     int h = l ? k + 1 : k; // h блочных строк у меня.
-
     for (int i = 0; i < h; ++i) {
         (*block_rows)[i] = i;
     }
