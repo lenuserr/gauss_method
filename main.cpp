@@ -34,6 +34,8 @@ int main(int argc, char* argv[]) {
     auto copy_b = b;
 
     std::vector<double> x(n);
+    std::vector<double> block(m*m);
+    std::vector<double> block2(m*m);
 
     auto start = high_resolution_clock::now();
     bool ok = solution(n, m, &matrix, &b, &x);
