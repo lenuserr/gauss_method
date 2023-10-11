@@ -19,7 +19,8 @@ void put_block(int i, int j, int n, int m, int k, int l, const std::vector<doubl
 double r1_eval(int n, const std::vector<double>& matrix, const std::vector<double>& x, const std::vector<double>& b, std::vector<double>* c, std::vector<double>* d);
 double r2_eval(int n, const std::vector<double>& x);
 bool is_inv(int m, std::vector<double>* matrix, double a_norm);
-void inverse_matrix(int m, std::vector<double>* matrix, std::vector<double>* identity, std::vector<int>* rows);
+bool inverse_matrix(int m, std::vector<double>* matrix, std::vector<double>* identity,
+ std::vector<int>* rows, double a_norm);
 void subtract_matrix_inplace(int n, int m, std::vector<double>* a, const std::vector<double>& b);
 void get_vector(int i, int m, int k, int l, const std::vector<double>& b, std::vector<double>* block3);
 void put_vector(int i, int m, int k, int l, const std::vector<double>& b_i, std::vector<double>* b);

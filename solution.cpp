@@ -37,9 +37,7 @@ bool solution(int n, int m, std::vector<double>* matrix, std::vector<double>* b,
         std::swap((*block_rows)[i], (*block_rows)[row_max_block]);
         get_block((*block_rows)[i], i, n, m, k, l, *matrix, block1); 
 
-        inverse_matrix(m, block1, block2, rows); 
-
-        // block2 занят под обратную матрицу.
+        inverse_matrix(m, block1, block2, rows, a_norm); 
 
         // умножаем блочную строку слева на обратную матрицу.
         for (int s = i + 1; s < k; ++s) { 
@@ -68,36 +66,29 @@ bool solution(int n, int m, std::vector<double>* matrix, std::vector<double>* b,
                 int block_cols = r < k ? m : l;
                 // multiplier shape: [multiplier_rows, m]; block shape: [m, block_cols]
 
-                std::vector<double> result(multiplier_rows * block_cols);
-                matr_prod(multiplier_rows, m, block_cols, *block1, *block2, &result);
+                matr_prod(multiplier_rows, m, block_cols, *block1, *block2, block3);
                 get_block((*block_rows)[q], r, n, m, k, l, *matrix, block2);
-                subtract_matrix_inplace(multiplier_rows, block_cols, block2, result);
+                subtract_matrix_inplace(multiplier_rows, block_cols, block2, *block3);
                 put_block((*block_rows)[q], r, n, m, k, l, *block2, matrix);
             }
 
             // Аналогичные формулы нужно выполнить для вектора b:
             get_vector((*block_rows)[i], m, k, l, *b, block2);
-            std::vector<double> v_i(multiplier_rows);
-            matr_prod(multiplier_rows, m, 1, *block1, *block2, &v_i);
+            matr_prod(multiplier_rows, m, 1, *block1, *block2, block3);
             get_vector((*block_rows)[q], m, k, l, *b, block1);
-            subtract_matrix_inplace(1, multiplier_rows, block1, v_i);
+            subtract_matrix_inplace(1, multiplier_rows, block1, *block3);
             put_vector((*block_rows)[q], m, k, l, *block1, b);
         }
     }
 
-    // Осталось написать обратный ход метода Гаусса и всё.
     // костыль для самого маленького блока l x l. я про него забыл, поэтому не хочу весь код выше менять.
     if (l) {
         get_block((*block_rows)[k], k, n, m, k, l, *matrix, block1);  
 
-        auto copy_last_block = *block1;
-        if (!is_inv(l, &copy_last_block, a_norm)) {
+        if (!inverse_matrix(l, block1, block2, rows, a_norm)) {
             return false;
-        }
-        // потом вот этот copy last block уберу нахой, этот код не нужен.
-        // МОЖНО УБРАТЬ, ЕСЛИ INVERSE_MATRIX СДЕЛАТЬ BOOL И ТАКУЮ ЛОГИКУ КАК В IS_INV НА RETURN FALSE.
+        } 
 
-        inverse_matrix(l, block1, block2, rows); 
         get_vector((*block_rows)[k], m, k, l, *b, block1);
         matrix_product(l, l, 1, *block2, *block1, block3, *rows);
         put_vector(k, m, k, l, *block3, x);
@@ -108,14 +99,12 @@ bool solution(int n, int m, std::vector<double>* matrix, std::vector<double>* b,
         std::vector<double> res(m);
         for (int j = i + 1; j < h; ++j) {
             get_block((*block_rows)[i], j, n, m, k, l, *matrix, block1); 
-            output(m, m, m, *block1);
             int cols = j < k ? m : l;
-            std::vector<double> prod(m);
             get_vector(j, m, k, l, *x, block2);  
-            matr_prod(m, cols, 1, *block1, *block2, &prod);
+            matr_prod(m, cols, 1, *block1, *block2, block3);
 
             for (int p = 0; p < m; ++p) {
-                res[p] += prod[p];
+                res[p] += (*block3)[p];
             }
         }
 
@@ -347,8 +336,8 @@ void subtract_matrix_inplace(int n, int m, std::vector<double>* a, const std::ve
     }
 }
 
-void inverse_matrix(int m, std::vector<double>* matrix, std::vector<double>* identity,
- std::vector<int>* rows) {
+bool inverse_matrix(int m, std::vector<double>* matrix, std::vector<double>* identity,
+ std::vector<int>* rows, double a_norm) {
 
     for (int i = 0; i < m; ++i) {
         for (int j = 0; j < m; ++j) {
@@ -372,6 +361,10 @@ void inverse_matrix(int m, std::vector<double>* matrix, std::vector<double>* ide
         }
 
         std::swap((*rows)[i], (*rows)[row_max_elem]);
+
+        if (std::fabs(max_elem) < EPS * a_norm) {
+            return false;    
+        }
 
         // делим нашу строку на max_elem.
         double factor = 1 / max_elem;
@@ -406,6 +399,7 @@ void inverse_matrix(int m, std::vector<double>* matrix, std::vector<double>* ide
         }
     }
 
+    return true;
     // rows - настоящий порядок строк у обратной матрицы.
 }
 
