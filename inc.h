@@ -20,4 +20,4 @@ void subtract_matrix_inplace(int n, int m, double* a, double* b);
 bool inverse_matrix(int m, double* matrix, double* identity, int* rows, double a_norm);
 bool is_inv(int m, double* matrix, double a_norm, int* rows);
 bool solution(int n, int m, double* matrix, double* b, double* x, 
-    int* block_rows, int* rows, double* block1, double* block2, double* block3, double* tmp_block);
+    int* block_rows, int* rows, double* block1, double* block2, double* block3);

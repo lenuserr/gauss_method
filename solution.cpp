@@ -2,13 +2,8 @@
 #include "inc.h"
 #define EPS 1e-14
 
-// 18:10. Начал выполнять 1ый пункт: переписываю всё на сишный массив.
-// 19:30. Убираем все недостатки. Надеемся, что станет лучше, потому что пока только хуже стало.
-// 19:50. get_vector и put_vector пробую сделать.
-// затем УБЕРУ ВЫДЕЛЕНИЕ ПАМЯТИ ПОСТОЯННОЕ В ОБРАТНОМ ХОДЕ ГАУССА.
-
 bool solution(int n, int m, double* matrix, double* b, double* x, 
-    int* block_rows, int* rows, double* block1, double* block2, double* block3, double* tmp_block) {
+    int* block_rows, int* rows, double* block1, double* block2, double* block3) {
     
     int k = n / m;
     int l = n % m;
@@ -52,9 +47,8 @@ bool solution(int n, int m, double* matrix, double* b, double* x,
             put_block(block_rows[i], k, n, m, k, l, block3, matrix);
         }
 
-        // также не забываем слева умножить нужную часть вектора b слева на inv_max_block.
-        get_vector(block_rows[i], m, k, l, b, block1); 
-        matrix_product(m, m, 1, block2, block1, block3, rows); 
+        // также не забываем слева умножить нужную часть вектора b слева на inv_max_block.  
+        matrix_product(m, m, 1, block2, b + m * block_rows[i], block3, rows); 
         put_vector(block_rows[i], m, k, l, block3, b);
 
         for (int q = i + 1; q < h; ++q) {
@@ -73,11 +67,8 @@ bool solution(int n, int m, double* matrix, double* b, double* x,
             }
 
             // Аналогичные формулы нужно выполнить для вектора b:
-            get_vector(block_rows[i], m, k, l, b, block2);
-            matr_prod(multiplier_rows, m, 1, block1, block2, block3);
-            get_vector(block_rows[q], m, k, l, b, block1);
-            subtract_matrix_inplace(1, multiplier_rows, block1, block3);
-            put_vector(block_rows[q], m, k, l, block1, b);
+            matr_prod(multiplier_rows, m, 1, block1, b + m*block_rows[i], block3);
+            subtract_matrix_inplace(1, multiplier_rows, b + m*block_rows[q], block3);
         }
     }
 
@@ -89,34 +80,31 @@ bool solution(int n, int m, double* matrix, double* b, double* x,
             return false;
         } 
 
-        get_vector(block_rows[k], m, k, l, b, block1);
-        matrix_product(l, l, 1, block2, block1, block3, rows);
+        matrix_product(l, l, 1, block2, b + m*block_rows[k], block3, rows);
         put_vector(k, m, k, l, block3, x);
     }
 
     // Обратный ход метода Гаусса.
     for (int i = k - 1; i >= 0; --i) {
         for (int vv = 0; vv < m; ++vv) { 
-            tmp_block[vv] = 0;
+            block2[vv] = 0;
         }
 
         for (int j = i + 1; j < h; ++j) {
             get_block(block_rows[i], j, n, m, k, l, matrix, block1); 
             int cols = j < k ? m : l;
-            get_vector(j, m, k, l, x, block2);  
-            matr_prod(m, cols, 1, block1, block2, block3);
+            matr_prod(m, cols, 1, block1, x + m*j, block3);
 
             for (int p = 0; p < m; ++p) {
-                tmp_block[p] += block3[p];
+                block2[p] += block3[p];
             }
         }
 
-        get_vector(block_rows[i], m, k, l, b, block1); 
         for (int p = 0; p < m; ++p) {
-            block1[p] -= tmp_block[p]; 
+            b[(m*block_rows[i]) + p] -= block2[p]; 
         }
 
-        put_vector(i, m, k, l, block1, x);
+        put_vector(i, m, k, l, b + m*block_rows[i], x);
     }     
 
     return true;
@@ -308,13 +296,6 @@ void put_block(int i, int j, int n, int m, int k, int l, double* block, double* 
             matrix[n * (m * i + p) + m * j + q] = block[ind];
             ind++;
         }
-    }
-}
-
-void get_vector(int i, int m, int k, int l, double* b, double* block3) {
-    int length = i < k ? m : l;
-    for (int p = 0; p < length; ++p) {
-        block3[p] = b[m*i + p]; 
     }
 }
 

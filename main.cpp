@@ -57,9 +57,8 @@ int main(int argc, char* argv[]) {
     int h = l ? k + 1 : k; // h блочных строк у меня.
     int* block_rows = new int[h];
 
-    double* tmp_block = new double[m]; 
     auto start = high_resolution_clock::now();
-    bool ok = solution(n, m, matrix, b, x, block_rows, rows, block1, block2, block3, tmp_block);
+    bool ok = solution(n, m, matrix, b, x, block_rows, rows, block1, block2, block3);
     auto stop = high_resolution_clock::now();
     duration<double> diff = stop - start;
     double t1 = diff.count();
@@ -84,7 +83,6 @@ int main(int argc, char* argv[]) {
         delete[] block3;
         delete[] rows;
         delete[] block_rows;
-        delete[] tmp_block;
         return -1;
     }
 
