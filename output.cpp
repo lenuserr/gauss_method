@@ -1,7 +1,7 @@
 #include <vector>
 #include <cstdio>
 
-void output(int n, int r, int l, const std::vector<double>& vec) {
+void output(int n, int r, int l, double* vec) {
     int h = std::min(l, r);
     int w = std::min(n, r);
     for (int i = 0; i < h; ++i) {

@@ -1,5 +1,4 @@
 #include <fstream>
-#include <vector>
 #include <cmath>
 
 double f(int s, int n, int i, int j) { 
@@ -17,25 +16,25 @@ double f(int s, int n, int i, int j) {
     }
 }
 
-void input_matrix(int s, int n, std::vector<double>* matrix) {
+void input_matrix(int s, int n, double* matrix) {
     for (int i = 0; i < n; ++i) {
         for (int j = 0; j < n; ++j) {
-            (*matrix)[n * i + j] = f(s, n, i, j);
+            matrix[n * i + j] = f(s, n, i, j);
         }
     }       
 }
 
-void input_b(int n, const std::vector<double>& matrix, std::vector<double>* b) {
+void input_b(int n, double* matrix, double* b) {
     for (int i = 0; i < n; ++i) {
         double sum = 0;
         for (int k = 0; k <= (n-1) / 2; ++k) {
             sum += matrix[n * i + 2*k];
         }
-        (*b)[i] = sum; 
+        b[i] = sum; 
     } 
 }
 
-bool read_file(const std::string& name_file, int n, std::vector<double>* matrix) {
+bool read_file(const std::string& name_file, int n, double* matrix) {
     std::ifstream fin(name_file);
     
     if (!fin.is_open()) {
@@ -49,7 +48,7 @@ bool read_file(const std::string& name_file, int n, std::vector<double>* matrix)
                 return false;  
             }
             
-            (*matrix)[n * i + j] = x;
+            matrix[n * i + j] = x;
         }
     }
     return true;
