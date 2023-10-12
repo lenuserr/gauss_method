@@ -1,14 +1,14 @@
-#include <vector>
 #include <cmath>
 #include "inc.h"
 #define EPS 1e-14
 
 // 18:10. Начал выполнять 1ый пункт: переписываю всё на сишный массив.
-// В IS_INV НЕ ЗАБУДЬ УБРАТЬ NEW И DELETE. НЕ ДОЛЖНО БЫТЬ ТАКИХ КОНСТРУКЦИЙ ЗДЕСЬ! ТОЛЬКО В MAIN И ВСЁ.
-// 19:00. Осталось функцию main сделать и inc.h файлик.
+// 19:30. Убираем все недостатки. Надеемся, что станет лучше, потому что пока только хуже стало.
+// 19:50. get_vector и put_vector пробую сделать.
+// затем УБЕРУ ВЫДЕЛЕНИЕ ПАМЯТИ ПОСТОЯННОЕ В ОБРАТНОМ ХОДЕ ГАУССА.
 
 bool solution(int n, int m, double* matrix, double* b, double* x, 
-    int* block_rows, int* rows, double* block1, double* block2, double* block3) {
+    int* block_rows, int* rows, double* block1, double* block2, double* block3, double* tmp_block) {
     
     int k = n / m;
     int l = n % m;
@@ -24,7 +24,7 @@ bool solution(int n, int m, double* matrix, double* b, double* x,
         for (int j = i; j < k; ++j) {
             get_block(block_rows[j], i, n, m, k, l, matrix, block1);
             double block_norm = matrix_norm(m, m, block1);
-            if (block_norm - EPS * a_norm > max_norm_block && is_inv(m, block1, a_norm)) {
+            if (block_norm - EPS * a_norm > max_norm_block && is_inv(m, block1, a_norm, rows)) {
                 max_norm_block = block_norm;
                 row_max_block = j;
             }
@@ -96,7 +96,10 @@ bool solution(int n, int m, double* matrix, double* b, double* x,
 
     // Обратный ход метода Гаусса.
     for (int i = k - 1; i >= 0; --i) {
-        std::vector<double> res(m);
+        for (int vv = 0; vv < m; ++vv) { 
+            tmp_block[vv] = 0;
+        }
+
         for (int j = i + 1; j < h; ++j) {
             get_block(block_rows[i], j, n, m, k, l, matrix, block1); 
             int cols = j < k ? m : l;
@@ -104,13 +107,13 @@ bool solution(int n, int m, double* matrix, double* b, double* x,
             matr_prod(m, cols, 1, block1, block2, block3);
 
             for (int p = 0; p < m; ++p) {
-                res[p] += block3[p];
+                tmp_block[p] += block3[p];
             }
         }
 
         get_vector(block_rows[i], m, k, l, b, block1); 
         for (int p = 0; p < m; ++p) {
-            block1[p] -= res[p]; 
+            block1[p] -= tmp_block[p]; 
         }
 
         put_vector(i, m, k, l, block1, x);
@@ -398,10 +401,7 @@ bool inverse_matrix(int m, double* matrix, double* identity, int* rows, double a
     // rows - настоящий порядок строк у обратной матрицы.
 }
 
-bool is_inv(int m, double* matrix, double a_norm) {
-
-    int* rows = new int[m];
-
+bool is_inv(int m, double* matrix, double a_norm, int* rows) {
     for (int k = 0; k < m; ++k) {
         rows[k] = k;
     }
