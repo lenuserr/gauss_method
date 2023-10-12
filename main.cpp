@@ -3,9 +3,6 @@
 #include <cstdio>
 #include "inc.h"
 
-// переписываю main и тестю всё.
-// УБЕРИ ПОТОМ COPY_MATRIX. ЛУЧШЕ ПРОСТО ЗАНОВО СЧИТАТЬ ИЗ ФАЙЛА ИЛИ СДЕЛАТЬ ВВОД INPUT_MATRIX, INPUT_B.
-
 using namespace std::chrono;
 
 int main(int argc, char* argv[]) {
@@ -34,18 +31,6 @@ int main(int argc, char* argv[]) {
 
     input_b(n, matrix, b);
 
-    double* copy_matrix = new double[n*n];
-    for (int i = 0; i < n; ++i) {
-        for (int j = 0; j < n; ++j) {
-            copy_matrix[n*i+j] = matrix[n*i+j];
-        }
-    }
-
-    double* copy_b = new double[n];
-    for (int i = 0; i < n; ++i) {
-        copy_b[i] = b[i];
-    }
-
     double* x = new double[n];
     double* block1 = new double[m*m];
     double* block2 = new double[m*m];
@@ -54,7 +39,7 @@ int main(int argc, char* argv[]) {
 
     int k = n / m;
     int l = n % m;
-    int h = l ? k + 1 : k; // h блочных строк у меня.
+    int h = l ? k + 1 : k; 
     int* block_rows = new int[h];
 
     auto start = high_resolution_clock::now();
@@ -62,10 +47,6 @@ int main(int argc, char* argv[]) {
     auto stop = high_resolution_clock::now();
     duration<double> diff = stop - start;
     double t1 = diff.count();
-    
-    std::cout << "A:\n";
-    output(n, r, n, copy_matrix);
-    std::cout << "\n";
 
     if (!ok) {
         printf (
@@ -75,8 +56,6 @@ int main(int argc, char* argv[]) {
 
         delete[] matrix;
         delete[] b;
-        delete[] copy_matrix;
-        delete[] copy_b;
         delete[] x;
         delete[] block1;
         delete[] block2;
@@ -84,20 +63,45 @@ int main(int argc, char* argv[]) {
         delete[] rows;
         delete[] block_rows;
         return -1;
+    } 
+
+    if (s) {
+        input_matrix(s, n, matrix);
+    } else {
+        std::string name_file = argv[argc - 1];
+        if (!read_file(name_file, n, matrix)) {
+            std::cout << "Проблемы с чтением файла" << "\n";
+
+            delete[] matrix;
+            delete[] b;
+            delete[] x;
+            delete[] block1;
+            delete[] block2;
+            delete[] block3;
+            delete[] rows;
+            delete[] block_rows;
+            return -1;
+        }
     }
 
-    std::cout << "x:\n";
-    output(n, r, 1, x);
-    std::cout << "\n";    
+    input_b(n, matrix, b);   
 
     double* c = new double[n];
     double* d = new double[n];
     start = high_resolution_clock::now();
-    double r1 = r1_eval(n, copy_matrix, x, copy_b, c, d);
+    double r1 = r1_eval(n, matrix, x, b, c, d);
     double r2 = r2_eval(n, x);
     stop = high_resolution_clock::now();
     diff = stop - start;
     double t2 = diff.count();
+
+    std::cout << "A:\n";
+    output(n, r, n, matrix);
+    std::cout << "\n";
+
+    std::cout << "x:\n";
+    output(n, r, 1, x);
+    std::cout << "\n";
 
     printf (
         "%s : Task = %d Res1 = %e Res2 = %e T1 = %.2f T2 = %.2f S = %d N = %d M = %d\n",
@@ -107,15 +111,12 @@ int main(int argc, char* argv[]) {
 
     delete[] matrix;
     delete[] b;
-    delete[] copy_matrix;
-    delete[] copy_b;
     delete[] x;
     delete[] block1;
     delete[] block2;
     delete[] block3;
     delete[] rows;
     delete[] block_rows;
-    delete[] tmp_block;
     delete[] c;
     delete[] d;
     return 0;

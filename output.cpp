@@ -1,4 +1,4 @@
-#include <vector>
+#include <algorithm>
 #include <cstdio>
 
 void output(int n, int r, int l, double* vec) {

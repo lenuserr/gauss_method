@@ -7,7 +7,7 @@ bool solution(int n, int m, double* matrix, double* b, double* x,
     
     int k = n / m;
     int l = n % m;
-    int h = l ? k + 1 : k; // h блочных строк у меня.
+    int h = l ? k + 1 : k; 
     for (int i = 0; i < h; ++i) {
         block_rows[i] = i;
     }
@@ -34,7 +34,6 @@ bool solution(int n, int m, double* matrix, double* b, double* x,
 
         inverse_matrix(m, block1, block2, rows, a_norm); 
 
-        // умножаем блочную строку слева на обратную матрицу.
         for (int s = i + 1; s < k; ++s) { 
             get_block(block_rows[i], s, n, m, k, l, matrix, block1); 
             matrix_product(m, m, m, block2, block1, block3, rows); 
@@ -47,26 +46,21 @@ bool solution(int n, int m, double* matrix, double* b, double* x,
             put_block(block_rows[i], k, n, m, k, l, block3, matrix);
         }
 
-        // также не забываем слева умножить нужную часть вектора b слева на inv_max_block.  
         matrix_product(m, m, 1, block2, b + m * block_rows[i], block3, rows); 
         put_vector(block_rows[i], m, k, l, block3, b);
 
         for (int q = i + 1; q < h; ++q) {
-            get_block(block_rows[q], i, n, m, k, l, matrix, block1); // multiplier = block1
+            get_block(block_rows[q], i, n, m, k, l, matrix, block1); 
             int multiplier_rows = q < k ? m : l;
-            // multiplier shape: [multiplier_rows, m]
             for (int r = i + 1; r < h; ++r) { 
                 get_block(block_rows[i], r, n, m, k, l, matrix, block2); 
                 int block_cols = r < k ? m : l;
-                // multiplier shape: [multiplier_rows, m]; block shape: [m, block_cols]
-
                 matr_prod(multiplier_rows, m, block_cols, block1, block2, block3);
                 get_block(block_rows[q], r, n, m, k, l, matrix, block2);
                 subtract_matrix_inplace(multiplier_rows, block_cols, block2, block3);
                 put_block(block_rows[q], r, n, m, k, l, block2, matrix);
             }
 
-            // Аналогичные формулы нужно выполнить для вектора b:
             matr_prod(multiplier_rows, m, 1, block1, b + m*block_rows[i], block3);
             subtract_matrix_inplace(1, multiplier_rows, b + m*block_rows[q], block3);
         }
@@ -84,7 +78,6 @@ bool solution(int n, int m, double* matrix, double* b, double* x,
         put_vector(k, m, k, l, block3, x);
     }
 
-    // Обратный ход метода Гаусса.
     for (int i = k - 1; i >= 0; --i) {
         for (int vv = 0; vv < m; ++vv) { 
             block2[vv] = 0;
@@ -111,7 +104,6 @@ bool solution(int n, int m, double* matrix, double* b, double* x,
 }
 
 double matrix_norm(int n, int m, double* matrix) {
-    // matrix shape: n x m
     double norm = -1;
     for (int j = 0; j < m; ++j) {
         double sum = 0;
@@ -306,8 +298,6 @@ void put_vector(int i, int m, int k, int l, double* b_i, double* b) {
     }
 }
 
-// a -= b;
-// n x m shape of both matrix
 void subtract_matrix_inplace(int n, int m, double* a, double* b) {
     for (int i = 0; i < n; ++i) {
         for (int j = 0; j < m; ++j) {
@@ -329,7 +319,6 @@ bool inverse_matrix(int m, double* matrix, double* identity, int* rows, double a
     }
 
     for (int i = 0; i < m; ++i) {
-        // выбираем максимальный элемент по столбцу.
         double max_elem = matrix[rows[i] * m + i];
         int row_max_elem = i;
         for (int j = i + 1; j < m; ++j) {
@@ -345,7 +334,6 @@ bool inverse_matrix(int m, double* matrix, double* identity, int* rows, double a
             return false;    
         }
 
-        // делим нашу строку на max_elem.
         double factor = 1 / max_elem;
         for (int s = 0; s < i; ++s) {
             identity[rows[i] * m + s] *= factor;
@@ -379,7 +367,6 @@ bool inverse_matrix(int m, double* matrix, double* identity, int* rows, double a
     }
 
     return true;
-    // rows - настоящий порядок строк у обратной матрицы.
 }
 
 bool is_inv(int m, double* matrix, double a_norm, int* rows) {
@@ -388,7 +375,6 @@ bool is_inv(int m, double* matrix, double a_norm, int* rows) {
     }
 
     for (int i = 0; i < m; ++i) {
-        // выбираем максимальный элемент по столбцу.
         double max_elem = matrix[rows[i] * m + i];
         int row_max_elem = i;
         for (int j = i + 1; j < m; ++j) {
@@ -404,7 +390,6 @@ bool is_inv(int m, double* matrix, double a_norm, int* rows) {
             return false;    
         }
 
-        // делим нашу строку на max_elem.
         double factor = 1 / max_elem;
         for (int s = i; s < m; ++s) {
             matrix[rows[i] * m + s] *= factor;
@@ -412,7 +397,6 @@ bool is_inv(int m, double* matrix, double a_norm, int* rows) {
 
         for (int k = i + 1; k < m; ++k) {
             double multiplier = -matrix[rows[k] * m + i];
-
             for (int p = i + 1; p < m; ++p) { 
                 matrix[rows[k] * m + p] += matrix[rows[i] * m + p] * multiplier;
             }
