@@ -66,7 +66,6 @@ bool solution(int n, int m, double* matrix, double* b, double* x,
         }
     }
 
-    // костыль для самого маленького блока l x l. я про него забыл, поэтому не хочу весь код выше менять.
     if (l) {
         get_block(block_rows[k], k, n, m, k, l, matrix, block1);  
 
@@ -117,136 +116,150 @@ double matrix_norm(int n, int m, double* matrix) {
     return norm;
 }
 
-void matrix_product(int n, int m, int k, double* a, double* b, double* res, int* inv_rows) {
-    int i, j, l;
+void matrix_product(int n, int m, int k, double* a, double* b, double* c, int* inv_rows) {
+    
+    for (int i = 0; i < n*k; ++i) {
+        c[i] = 0;
+    }
+    
     double sum00, sum01, sum02, sum10, sum11, sum12, sum20, sum21, sum22;
-
-    int v = n % 3;
-    int h = k % 3;
-    for(i = 0; i < n * k; i++)
-          res[i] = 0;
-    for(i = 0; i < v; i++) {
-            for(j = 0; j < h; j++) {
-                    sum00 = 0;
-                    for(l = 0; l < m; l++)
-                            sum00 += a[inv_rows[i]*m+l] * b[l*k+j];
-                    res[i*k+j] += sum00;
+    
+    int v3 = n%3;
+    int h3 = k%3;
+    
+    for (int i = 0; i < v3; ++i) {
+        for (int j = 0; j < h3; ++j) {
+            sum00 = 0;
+            for (int p = 0; p < m; ++p) {
+                sum00 += a[m*inv_rows[i] + p] * b[k*p + j];
             }
-            for(; j < k; j += 3) {
-                    sum00 = sum01 = sum02 = 0;
-                            for(l = 0; l < m; l++) {
-                                    sum00 += a[inv_rows[i]*m+l] * b[l*k+j];
-                                    sum01 += a[inv_rows[i]*m+l] * b[l*k+j+1];
-                                    sum02 += a[inv_rows[i]*m+l] * b[l*k+j+2];
-                            }
-                    res[i*k+j] += sum00;
-                    res[i*k+j+1] += sum01;
-                    res[i*k+j+2] += sum02;
+            
+            c[k*i + j] = sum00;
+        }
+        for (int j = h3; j < k; j+=3) {
+            sum00 = 0; sum01 = 0; sum02 = 0;
+            for (int p = 0; p < m; ++p) {
+                sum00 += a[m*inv_rows[i] + p] * b[k*p + j];
+                sum01 += a[m*inv_rows[i] + p] * b[k*p + j + 1];
+                sum02 += a[m*inv_rows[i] + p] * b[k*p + j + 2];
             }
+            c[k*i + j] = sum00;
+            c[k*i + j + 1] = sum01;
+            c[k*i + j + 2] = sum02;
+        }
     }
-    for(; i < n; i += 3) {
-            for(j = 0; j < h; j++) {
-                    sum00 = sum10 = sum20 = 0;
-                    for(l = 0; l < m; l++) {
-                            sum00 += a[inv_rows[i]*m+l] * b[l*k+j];
-                            sum10 += a[inv_rows[i + 1]*m+l] * b[l*k+j];
-                            sum20 += a[inv_rows[i + 2]*m+l] * b[l*k+j];
-                    }
-                    res[i*k+j] += sum00;
-                    res[(i+1)*k+j] += sum10;
-                    res[(i+2)*k+j] += sum20;
+    
+    for (int i = v3; i < n; i+=3) {   
+        for (int j = 0; j < h3; ++j) {
+            sum00 = 0; sum01 = 0; sum02 = 0;
+            for (int p = 0; p < m; ++p) {
+                sum00 += a[m*inv_rows[i] + p] * b[k*p + j];
+                sum01 += a[m*inv_rows[i + 1] + p] * b[k*p + j];
+                sum02 += a[m*inv_rows[i + 2] + p] * b[k*p + j];
             }
-
-            for(; j < k; j += 3) {
-                    sum00 = sum01 = sum02 = sum10 = sum11 = sum12 = sum20 = sum21 = sum22 = 0;
-	for(l = 0; l < m; l++) {
-                            sum00 += a[inv_rows[i]*m+l] * b[l*k+j];
-                            sum01 += a[inv_rows[i]*m+l] * b[l*k+j+1];
-                            sum02 += a[inv_rows[i]*m+l] * b[l*k+j+2];
-                            sum10 += a[inv_rows[i + 1]*m+l] * b[l*k+j];
-                            sum11 += a[inv_rows[i + 1]*m+l] * b[l*k+j+1];
-                            sum12 += a[inv_rows[i + 1]*m+l] * b[l*k+j+2];
-                            sum20 += a[inv_rows[i + 2]*m+l] * b[l*k+j];
-                            sum21 += a[inv_rows[i + 2]*m+l] * b[l*k+j+1];
-                            sum22 += a[inv_rows[i + 2]*m+l] * b[l*k+j+2];
-                    }
-                    res[i*k+j] += sum00;
-                    res[i*k+j+1] += sum01;
-                    res[i*k+j+2] += sum02;
-                    res[(i+1)*k+j] += sum10;
-                    res[(i+1)*k+j+1] += sum11;
-                    res[(i+1)*k+j+2] += sum12;
-                    res[(i+2)*k+j] += sum20;
-                    res[(i+2)*k+j+1] += sum21;
-                    res[(i+2)*k+j+2] += sum22; 
+            c[k*i + j] = sum00;
+            c[k*(i + 1) + j] = sum01;
+            c[k*(i + 2) + j] = sum02;
+        }
+        
+        for (int j = h3; j < k; j+=3) {
+            sum00 = 0; sum01 = 0; sum02 = 0; sum10 = 0; sum11 = 0; sum12 = 0;
+            sum20 = 0; sum21 = 0; sum22 = 0;
+            for (int p = 0; p < m; ++p) {
+                sum00 += a[m*inv_rows[i] + p] * b[k*p + j];
+                sum01 += a[m*inv_rows[i] + p] * b[k*p + j + 1];
+                sum02 += a[m*inv_rows[i] + p] * b[k*p + j + 2];
+                sum10 += a[m*inv_rows[i + 1] + p] * b[k*p + j];
+                sum11 += a[m*inv_rows[i + 1] + p] * b[k*p + j + 1];
+                sum12 += a[m*inv_rows[i + 1] + p] * b[k*p + j + 2];
+                sum20 += a[m*inv_rows[i + 2] + p] * b[k*p + j];
+                sum21 += a[m*inv_rows[i + 2] + p] * b[k*p + j + 1];
+                sum22 += a[m*inv_rows[i + 2] + p] * b[k*p + j + 2];
             }
-    }
+            c[k*i + j] = sum00;
+            c[k*i + j + 1] = sum01; 
+            c[k*i + j + 2] = sum02;
+            c[k*(i + 1) + j] = sum10;
+            c[k*(i + 1)  + j + 1] = sum11;
+            c[k*(i + 1) + j + 2] = sum12;
+            c[k*(i + 2) + j] = sum20;
+            c[k*(i + 2) + j + 1] = sum21;
+            c[k*(i + 2) + j + 2] = sum22;
+        }
+    }    
 }
 
-void matr_prod(int n, int m, int k, double* a, double* b, double* res) {
-        int i, j, l;
-        double sum00, sum01, sum02, sum10, sum11, sum12, sum20, sum21, sum22;
-
-        int v = n % 3;
-        int h = k % 3;
-        for(i = 0; i < n * k; i++)
-              res[i] = 0;
-        for(i = 0; i < v; i++) {
-                for(j = 0; j < h; j++) {
-                        sum00 = 0;
-                        for(l = 0; l < m; l++)
-                                sum00 += a[i*m+l] * b[l*k+j];
-                        res[i*k+j] += sum00;
-                }
-                for(; j < k; j += 3) {
-                        sum00 = sum01 = sum02 = 0;
-                                for(l = 0; l < m; l++) {
-                                        sum00 += a[i*m+l] * b[l*k+j];
-                                        sum01 += a[i*m+l] * b[l*k+j+1];
-                                        sum02 += a[i*m+l] * b[l*k+j+2];
-                                }
-                        res[i*k+j] += sum00;
-                        res[i*k+j+1] += sum01;
-                        res[i*k+j+2] += sum02;
-                }
+void matr_prod(int n, int m, int k, double* a, double* b, double* c) {
+    
+    for (int i = 0; i < n*k; ++i) {
+        c[i] = 0;
+    }
+    
+    double sum00, sum01, sum02, sum10, sum11, sum12, sum20, sum21, sum22;
+    
+    int v3 = n%3;
+    int h3 = k%3;
+    
+    for (int i = 0; i < v3; ++i) {
+        for (int j = 0; j < h3; ++j) {
+            sum00 = 0;
+            for (int p = 0; p < m; ++p) {
+                sum00 += a[m*i + p] * b[k*p + j];
+            }
+            
+            c[k*i + j] = sum00;
         }
-        for(; i < n; i += 3) {
-                for(j = 0; j < h; j++) {
-                        sum00 = sum10 = sum20 = 0;
-                        for(l = 0; l < m; l++) {
-                                sum00 += a[i*m+l] * b[l*k+j];
-                                sum10 += a[(i+1)*m+l] * b[l*k+j];
-                                sum20 += a[(i+2)*m+l] * b[l*k+j];
-                        }
-                        res[i*k+j] += sum00;
-                        res[(i+1)*k+j] += sum10;
-                        res[(i+2)*k+j] += sum20;
-                }
-
-                for(; j < k; j += 3) {
-                        sum00 = sum01 = sum02 = sum10 = sum11 = sum12 = sum20 = sum21 = sum22 = 0;
-		for(l = 0; l < m; l++) {
-                                sum00 += a[i*m+l] * b[l*k+j];
-                                sum01 += a[i*m+l] * b[l*k+j+1];
-                                sum02 += a[i*m+l] * b[l*k+j+2];
-                                sum10 += a[(i+1)*m+l] * b[l*k+j];
-                                sum11 += a[(i+1)*m+l] * b[l*k+j+1];
-                                sum12 += a[(i+1)*m+l] * b[l*k+j+2];
-                                sum20 += a[(i+2)*m+l] * b[l*k+j];
-                                sum21 += a[(i+2)*m+l] * b[l*k+j+1];
-                                sum22 += a[(i+2)*m+l] * b[l*k+j+2];
-                        }
-                        res[i*k+j] += sum00;
-                        res[i*k+j+1] += sum01;
-                        res[i*k+j+2] += sum02;
-                        res[(i+1)*k+j] += sum10;
-                        res[(i+1)*k+j+1] += sum11;
-                        res[(i+1)*k+j+2] += sum12;
-                        res[(i+2)*k+j] += sum20;
-                        res[(i+2)*k+j+1] += sum21;
-                        res[(i+2)*k+j+2] += sum22;
-                }
+        for (int j = h3; j < k; j+=3) {
+            sum00 = 0; sum01 = 0; sum02 = 0;
+            for (int p = 0; p < m; ++p) {
+                sum00 += a[m*i + p] * b[k*p + j];
+                sum01 += a[m*i + p] * b[k*p + j + 1];
+                sum02 += a[m*i + p] * b[k*p + j + 2];
+            }
+            c[k*i + j] = sum00;
+            c[k*i + j + 1] = sum01;
+            c[k*i + j + 2] = sum02;
         }
+    }
+    
+    for (int i = v3; i < n; i+=3) {   
+        for (int j = 0; j < h3; ++j) {
+            sum00 = 0; sum01 = 0; sum02 = 0;
+            for (int p = 0; p < m; ++p) {
+                sum00 += a[m*i + p] * b[k*p + j];
+                sum01 += a[m*(i + 1) + p] * b[k*p + j];
+                sum02 += a[m*(i + 2) + p] * b[k*p + j];
+            }
+            c[k*i + j] = sum00;
+            c[k*(i + 1) + j] = sum01;
+            c[k*(i + 2) + j] = sum02;
+        }
+        
+        for (int j = h3; j < k; j+=3) {
+            sum00 = 0; sum01 = 0; sum02 = 0; sum10 = 0; sum11 = 0; sum12 = 0;
+            sum20 = 0; sum21 = 0; sum22 = 0;
+            for (int p = 0; p < m; ++p) {
+                sum00 += a[m*i + p] * b[k*p + j];
+                sum01 += a[m*i + p] * b[k*p + j + 1];
+                sum02 += a[m*i + p] * b[k*p + j + 2];
+                sum10 += a[m*(i + 1) + p] * b[k*p + j];
+                sum11 += a[m*(i + 1) + p] * b[k*p + j + 1];
+                sum12 += a[m*(i + 1) + p] * b[k*p + j + 2];
+                sum20 += a[m*(i + 2) + p] * b[k*p + j];
+                sum21 += a[m*(i + 2) + p] * b[k*p + j + 1];
+                sum22 += a[m*(i + 2) + p] * b[k*p + j + 2];
+            }
+            c[k*i + j] = sum00;
+            c[k*i + j + 1] = sum01; 
+            c[k*i + j + 2] = sum02;
+            c[k*(i + 1) + j] = sum10;
+            c[k*(i + 1)  + j + 1] = sum11;
+            c[k*(i + 1) + j + 2] = sum12;
+            c[k*(i + 2) + j] = sum20;
+            c[k*(i + 2) + j + 1] = sum21;
+            c[k*(i + 2) + j + 2] = sum22;
+        }
+    }    
 }
 
 void subtract_vector(int n, double* a, double* b, double* c) {   
